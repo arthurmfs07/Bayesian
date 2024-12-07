@@ -1,0 +1,520 @@
+---
+title: "Simulando"
+author: "Grupo"
+date: "02-12-2024"
+output:
+  html_document:
+    df_print: paged
+    encoding: UTF-8
+  html_notebook: default
+  pdf_document: default
+urlcolor: blue
+---
+
+```{r}
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(survival)
+```
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_knit$set(root.dir = "C:/Users/arthu/OneDrive/Área de Trabalho/project")
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, kable.label = TRUE)
+Sys.setlocale("LC_ALL", "pt_BR.UTF-8")
+
+#ggsave("nome.png", objeto, width = 6, height = 4, dpi = 300, bg = "white") para salvar imagens
+```
+
+
+```{r}
+r_files <- list.files("rf", pattern = "\\.R$", full.names = TRUE)
+invisible(sapply(r_files, source))
+```
+
+
+
+
+```{r}
+set.seed(42)
+  
+samples <- ramarendra(10000, 0.8)
+
+hist(samples, probability = TRUE, main = "Amarendra Distribution", xlab = "x", ylab = "pdf")
+
+```
+
+
+```{r}
+
+ggplot(data.frame(x = samples), aes(x=x))+
+  geom_density(fill= "blue", alpha = 0.2)+
+  theme_minimal()
+
+```
+
+```{r}
+plot(ecdf(samples))
+```
+
+```{r}
+
+set.seed(42)
+plot_mix(1000, seq(0.01, 15, length.out = 1000), c(0.8, 0.5, 1.5))
+
+```
+
+
+### Monte carlo simulation
+
+
+```{r}
+
+set.seed(42)
+
+n_mc_values <- c(25, 50, 100, 200, 400)
+n_sims <- 1000
+parameters <- c(0.1, 0.5, 1, 1.5, 3, 5)
+
+results_mc_all <- run_simulation(n_mc_values, parameters, n_sims)
+# utils::View(results_mc_all[['100']]) access results from each simulation filtered by sample size 'n_mc_values' 
+plot_mc_tables()
+
+```
+
+
+```{r}
+plot_confidence_intervals(results_mc_all, n_mc = 25, theta = 0.5, n_sims = 100)
+```
+
+
+
+
+```{r}
+
+fixed_param <- 0.5
+sample_sizes <- seq(20, 100, by = 1) 
+
+```
+
+
+```{r}
+
+set.seed(42)
+bias_results <- run_simulation_fixed_bias(sample_sizes, fixed_param, 1000)
+
+```
+
+```{r}
+plot_fixed_bias()
+```
+
+
+
+
+
+```{r}
+
+set.seed(42)
+mse_results <- run_simulation_fixed_mse(sample_sizes, fixed_param, 1000)
+
+```
+
+```{r}
+
+plot_fixed_mse()
+
+```
+
+
+
+## Plotting
+
+
+```{r}
+
+space <- seq(0, 35, length.out = 1000)
+theta_values <- c(0.2, 0.5, 0.8, 1)
+#theta_values <- c(1.5, 2, 2.5, 3)
+
+plot_pdf(space, theta_values)
+plot_cdf(space, theta_values)
+plot_hrf(space, theta_values)
+
+```
+
+
+
+
+## Theoretical model fitting
+
+Best model with lowest, W, A, KS, -loglike
+
+1. Amarendra (AMAR) - "famarendra"
+ 
+2. GeneralizedHL(GHL) - "fehl"
+ 
+3. Lindley(Li) - "flind"
+ 
+4. InverseLindley(ILi) - "filind"
+ 
+5. Exponential(Exp) - "fexp"
+
+
+```{r}
+
+set.seed(42)
+data_test <- ramarendra(70,0.8)
+starts <- c(1, 1, 1, 1, 2, 1)
+
+fit <- initialize_fitting(data_test, starts)
+
+```
+
+
+```{r}
+
+plots_adequacy(data_test, fit , ylim =  c(0,0.3))
+
+```
+
+```{r}
+table_adequacy()
+table_info_criteria()
+```
+
+## Real-life data fitting
+
+```{r}
+
+# Data Set 1: Relief times (in minutes) of 20 patients
+relief_times <- c(1.1, 1.4, 1.3, 1.7, 1.9, 1.8, 1.6, 2.2, 1.7, 2.7, 
+                  4.1, 1.8, 1.5, 1.2, 1.4, 3.0, 1.7, 2.3, 1.6, 2.0)
+
+# Data Set 2: Strength measurements of aircraft window glass
+glass_strength <- c(18.83, 20.80, 21.657, 23.03, 23.23, 24.05, 24.321, 
+                    25.50, 25.52, 25.80, 26.69, 26.77, 26.78, 27.05, 
+                    27.67, 29.90, 31.11, 33.20, 33.73, 33.76, 33.89, 
+                    34.76, 35.75, 35.91, 36.98, 37.08, 37.09, 39.58, 
+                    44.045, 45.29,45.381)
+
+# Survival in patients with advanced lung cancer from the North Central Cancer Treatment Group.
+# 34 months of study, time in days
+lung_time <- lung$time/34
+
+#A trial of laser coagulation as a treatment to delay diabetic retinopathy.
+# time in days, 11 weeks of study
+retinopathy_time <- retinopathy$futime
+
+#Lifetime of patients with AIDs, in days. 8.9 years of study
+ipec_time <- c(852, 123, 1145, 2755, 2117, 329, 60, 151, 1563, 1247, 84, 214, 25, 1348, 158, 555, 408, 1116, 998, 1125, 944, 54, 151, 855, 116, 80, 1757, 194, 183, 37, 237, 1506, 168, 134, 803, 18, 371, 173, 688, 163, 3178, 29, 50, 887, 516, 645, 310, 204, 1344, 1261, 285, 83, 150, 1307, 1076, 1226, 865, 811, 2898, 80, 967, 618, 235, 2236, 152, 892, 81, 1085, 1073, 1615, 35, 290, 1780, 3228, 52, 733, 3213, 1983, 2304, 572, 21, 1272, 1646, 304, 418, 854, 2973, 40, 850, 1139, 323, 1507, 2717, 1735, 388, 145, 905, 927, 1027, 631, 2495, 1331, 623, 2568, 2013, 721, 1952, 397, 254, 1630, 1523, 146, 108, 1835, 499, 333, 202, 2437, 1015, 2138, 22, 2090, 179, 2439, 1063, 85, 343, 2215, 259, 2258, 1371, 39, 2371, 975, 952, 2492, 1478, 295, 992, 1011, 644, 426, 537, 1454, 1869, 714, 1310, 2084, 1918, 1649, 290, 1685, 1348, 652, 1384, 1471, 1512, 378, 1352, 419, 1426, 1488, 1315, 643, 1197, 1343, 1176, 944, 340, 881, 915, 948, 985, 1242, 955, 987, 899, 1056, 775, 785, 731, 16, 680, 21, 444, 524, 217, 440, 470, 390, 344, 578, 504)/(8.9*12)
+
+```
+
+
+
+```{r}
+
+starts <- c(1, 1, 1, 1, 2, 1)
+
+fit <- initialize_fitting(relief_times, starts)
+
+plots_adequacy(relief_times, initialize_fitting(relief_times, starts),  c(0,1))
+
+```
+
+```{r}
+table_adequacy()
+table_info_criteria()
+```
+
+```{r}
+
+starts <- c(1.2, 1.2, 1.2, 1.5, 2, 1.1)
+
+fit <- initialize_fitting(glass_strength, starts)
+
+plots_adequacy(glass_strength, initialize_fitting(glass_strength, starts),  c(0,0.1))
+
+```
+```{r}
+plot_hrf(seq(0, max(glass_strength), length.out = 1000), c(fit$famarendra$mle))
+```
+
+
+
+```{r}
+table_adequacy()
+table_info_criteria()
+```
+
+
+```{r}
+
+starts <- c(1, 1, 1, 1, 2, 1)
+
+fit <- initialize_fitting(lung_time, starts)
+
+plots_adequacy(lung_time, initialize_fitting(lung_time, starts),  c(0,0.1))
+
+
+```
+
+
+```{r}
+table_adequacy()
+table_info_criteria()
+
+```
+
+```{r}
+# png("realdata2.png", width = 6, height = 4, units = "in", res = 300, bg = "white")
+# plots_adequacy(lung_time, initialize_fitting(lung_time, starts),  c(0,0.1))
+# dev.off()
+```
+
+
+```{r}
+starts <- c(1, 1, 1, 1, 2, 1)
+
+fit <- initialize_fitting(retinopathy_time, starts)
+
+plots_adequacy(retinopathy_time, initialize_fitting(retinopathy_time, starts),  c(0,0.08))
+
+
+```
+
+```{r}
+table_adequacy()
+table_info_criteria()
+```
+
+
+```{r}
+starts <- c(1, 1, 1, 1, 2, 1)
+
+fit <- initialize_fitting(ipec_time, starts)
+
+plots_adequacy(ipec_time, initialize_fitting(ipec_time, starts),  c(0,0.2))
+
+
+```
+
+
+```{r}
+table_adequacy()
+table_info_criteria()
+```
+
+
+
+
+## MCMC estudo convergência
+
+### Priori Gama pouco informativa
+
+Priori $\theta \sim \Gamma(\alpha,\beta)$ pouco informativa, basta alterar os hiperparâmetros alfa e beta da priori na função AMHtheta
+
+Os resultados abaixo foram obtidos por meio de uma implementação do algoritmo de Metropolis Hastings.
+```{r}
+
+set.seed(42)
+n <- 50                
+x <- ramarendra(n, 1) #theta = 1
+burnin = 10000
+niter = 100000 #iterações algoritmo
+
+result1 <- AMHtheta(n = n, x = x, alpha = 0.01, beta = 0.01, niter = niter, start = 3)
+cat("Acceptance rate:", result1$taxa, "\n")
+result1_burnin <- result1$theta[(burnin + 1):niter]
+
+result2 <- AMHtheta(n = n, x = x, alpha = 0.01, beta = 0.01, niter = niter, start = 0.5)
+cat("Acceptance rate:", result2$taxa, "\n")
+result2_burnin <- result2$theta[(burnin + 1):niter]
+
+```
+
+
+```{r}
+
+chain1 = mcmc(result1$theta[(burnin + 1):niter])
+chain1_thin <- window(chain1, thin = 10)
+summary(chain1)
+
+chain2 = mcmc(result2$theta[(burnin + 1):niter])
+chain2_thin <- window(chain2, thin = 10)
+summary(chain2)
+
+gelman.diag(mcmc.list(chain1, chain2), autoburnin = FALSE)
+
+```
+
+
+```{r}
+plot_trace(result1_burnin, result2_burnin)
+```
+
+
+```{r}
+autocorr.plot(chain1_thin)
+autocorr.plot(chain2_thin)
+```
+
+
+
+```{r}
+plot(chain1_thin)
+```
+
+```{r}
+plot(chain2_thin)
+```
+
+```{r}
+
+hist(chain1_thin, prob = TRUE, xlab = "Samples", ylab = "Density", main = "Posterior Samples", 
+     col = alpha("cyan", 0.3))
+lines(density(chain1_thin), lwd = 2)
+
+```
+
+
+
+
+
+### Priori Jeffreys
+
+Com um tamanho amostral N menor, para verificar convergência quando a verossimilhança não domina a priori totalmente.
+Algoritmo extremamente sensível ao chute inicial e a mudanças no tamanho amostral.
+
+```{r}
+
+set.seed(42)
+n <- 25                
+x <- ramarendra(n, 1) #theta = 1
+burnin = 10000
+niter = 100000 #iterações algoritmo
+
+result1 <- AMHjeffreys(n = n, x = x, niter = niter, start = 1)
+cat("Acceptance rate:", result1$taxa, "\n")
+result1_burnin <- result1$theta[(burnin + 1):niter]
+
+result2 <- AMHjeffreys(n = n, x = x, niter = niter, start = 1.5)
+cat("Acceptance rate:", result2$taxa, "\n")
+result2_burnin <- result2$theta[(burnin + 1):niter]
+
+```
+
+
+```{r}
+
+chain1 = mcmc(result1$theta[(burnin + 1):niter])
+chain1_thin <- window(chain1, thin = 10)
+summary(chain1)
+
+chain2 = mcmc(result2$theta[(burnin + 1):niter])
+chain2_thin <- window(chain2, thin = 10)
+summary(chain2)
+
+gelman.diag(mcmc.list(chain1, chain2), autoburnin = FALSE)
+
+```
+
+
+```{r}
+plot_trace(result1_burnin, result2_burnin)
+```
+
+```{r}
+autocorr.plot(chain1_thin)
+autocorr.plot(chain2_thin)
+```
+
+
+```{r}
+plot(chain1_thin)
+```
+
+
+```{r}
+plot(chain2_thin)
+```
+
+
+
+
+
+## MCMC estudo simulação
+
+### Gamma(0.01,0.01) Prior
+
+Devido ao alto tempo computacional para realizar as simulações, a função que roda todos cenários está comentada e salva num arquivo na pasta, para que possa ser chamada toda vez que o arquivo R markdown for aberto e fechado, e, assim, ser possível visualizar todos os resultados sempre que carregarmos a linha de código em "table_mcmc"
+
+```{r, message=FALSE, echo=FALSE, results='hide', warning=FALSE}
+
+set.seed(42)
+
+#results_mcmc_gamma <- MCMC_gamma(c(25, 50, 100, 200), c(0.1, 0.5, 1, 1.5, 3, 5), 100)
+#saveRDS(results_mcmc_gamma, file = "results_mcmc_gamma.rds")
+
+```
+
+
+```{r}
+results_mcmc_gamma <- readRDS("results_mcmc_gamma.rds")
+table_mcmc(results_mcmc_gamma)
+```
+
+### Priori Empirica
+
+Pode-se utilizar os dados para obter os hiperparâmetros da distribuição a priori. Integrando $\theta$ da distribuição conjunta de $y$ e $\theta$, obtém-se uma forma de verossimilhança para os hiperparâmetros $\alpha$ e $\beta$ da priori elicitada $\theta \sim \Gamma(\alpha,\beta)$. Assim, obtém-se as estimativas de máxima verossimilhança para $\alpha$ e $\beta$. Como a integral abaixo não possui forma analítica, primeiro, integra-se numericamente a expressão em função de $\theta$ e, por último, maximiza-se a expressão com um otimizador.  
+
+$$
+\int_{0}^{\infty} f(y \mid\theta)\pi(\theta) d\theta
+=\frac{\beta^\alpha}{\Gamma(\alpha)} 
+(1 + x + x^2 + x^3) 
+\int_0^\infty \frac{\theta^{\alpha+3} e^{-\theta (x + \beta)}}{\theta^3 + \theta^2 + 2\theta + 6} \, d\theta 
+= f(y \mid \alpha, \beta)
+$$
+
+
+```{r}
+
+set.seed(42)
+estimates_empirical <- estimates_empirical_prior(ramarendra(100,4), c(2,2), c(0,0), c(1000,1000))
+cat("Alpha:", estimates_empirical$solution[1], "\nBeta:", estimates_empirical$solution[2], "\n")
+
+```
+
+$\ln{(\mathcal{L}(\alpha, \beta))}$
+
+```{r}
+
+set.seed(42)
+plot_empirical_loglikelihood(ramarendra(100,4), seq(0.1, 5, length.out = 50), seq(0.1, 3, length.out = 50))
+
+#call object as plot_3d1
+#htmlwidgets::saveWidget(plot_3d1, "plot_empirical_loglikelihood.html")
+#webshot2::webshot("plot_empirical_loglikelihood.html", "plot_empirical_loglikelihood.png", vwidth = 800, vheight = 600)
+# can include png image knitr::include_graphics("plot_empirical_loglikelihood.png")
+```
+
+
+
+```{r}
+
+# results_mcmc_empirical <- MCMC_empirical(c(100), c(4), 100)
+# saveRDS(results_mcmc_empirical, file = "results_mcmc_empirical.rds")
+
+```
+
+
+```{r}
+results_mcmc_empirical <- readRDS("results_mcmc_empirical.rds")
+table_mcmc(results_mcmc_empirical)
+```
+
+

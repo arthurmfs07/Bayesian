@@ -1,0 +1,4 @@
+- Download the Project folder 
+- open "trabalho.rmd"
+- change root.dir to your dir in chunk:
+	-knitr::opts_knit$set(root.dir = "")
