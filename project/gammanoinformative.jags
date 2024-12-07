@@ -1,0 +1,16 @@
+model{
+	for(i in 1:N){
+
+
+		# Likelihood
+
+		L[i] <- ((theta^4)/(theta^3 + theta^2 + 2*theta + 6))*(1+y[i]+y[i]^2+y[i]^3)*exp(-theta*y[i])
+
+		pro[i] <- L[i]/C
+		ones[i] ~ dbern(pro[i])
+	}
+	
+    theta ~ dgamma(0.01, 0.01)  
+
+    C <- 1000000
+}
